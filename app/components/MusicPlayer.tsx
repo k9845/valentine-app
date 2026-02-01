@@ -52,14 +52,14 @@ export default function MusicPlayer() {
   };
 
   return (
-    <div className="fixed top-6 right-6 z-50 flex items-center gap-2">
+    <div className="fixed top-3 sm:top-6 right-3 sm:right-6 z-50 flex items-center gap-1.5 sm:gap-2">
       <AnimatePresence>
         {showHint && !isPlaying && (
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 20 }}
-            className="bg-pink-500 text-white px-3 py-1 rounded-full text-sm font-medium shadow-lg"
+            className="bg-pink-500 text-white px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-xs sm:text-sm font-medium shadow-lg whitespace-nowrap"
           >
             🎵 Click for music!
           </motion.div>
@@ -70,7 +70,7 @@ export default function MusicPlayer() {
         onClick={togglePlay}
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.95 }}
-        className={`w-12 h-12 rounded-full flex items-center justify-center text-2xl shadow-lg transition-colors ${
+        className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-xl sm:text-2xl shadow-lg transition-colors ${
           isPlaying 
             ? 'bg-pink-500 text-white animate-pulse' 
             : 'bg-white/20 backdrop-blur-sm text-white hover:bg-white/30'
@@ -86,7 +86,7 @@ export default function MusicPlayer() {
           onClick={toggleMute}
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.95 }}
-          className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm text-white flex items-center justify-center text-lg hover:bg-white/30 transition-colors"
+          className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white/20 backdrop-blur-sm text-white flex items-center justify-center text-base sm:text-lg hover:bg-white/30 transition-colors"
         >
           {isMuted ? '🔇' : '🔊'}
         </motion.button>
@@ -96,12 +96,12 @@ export default function MusicPlayer() {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="flex gap-1 items-end h-6"
+          className="hidden sm:flex gap-1 items-end h-6"
         >
           {[1, 2, 3, 4].map((i) => (
             <motion.div
               key={i}
-              className="w-1 bg-pink-400 rounded-full"
+              className="w-0.5 sm:w-1 bg-pink-400 rounded-full"
               animate={{
                 height: [8, 24, 8],
               }}

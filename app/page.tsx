@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence, useMotionValue, useSpring } from 'framer-motion';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { Float, PerspectiveCamera } from '@react-three/drei';
@@ -8,7 +8,8 @@ import * as THREE from 'three';
 import MusicPlayer from './components/MusicPlayer';
 import SuccessMeme from './components/SuccessMeme';
 
-function FloatingHearts() {
+// 3D Floating Hearts Component - Reduced count for mobile
+function FloatingHearts({ isMobile }: { isMobile: boolean }) {
   const heartsRef = useRef<THREE.Group>(null);
   
   useFrame((state) => {
@@ -30,7 +31,7 @@ function FloatingHearts() {
     return (
       <Float speed={2} rotationIntensity={1} floatIntensity={2}>
         <mesh ref={meshRef} position={[position[0], position[1], position[2]]} scale={scale}>
-          <sphereGeometry args={[0.4, 32, 32]} />
+          <sphereGeometry args={[0.4, 16, 16]} />
           <meshStandardMaterial 
             color={color} 
             emissive={color} 
@@ -38,17 +39,16 @@ function FloatingHearts() {
             roughness={0.1}
             metalness={0.8}
           />
-          {/* Heart shape using two spheres and a cone */}
           <mesh position={[-0.25, 0.3, 0]} scale={[0.6, 0.6, 0.6]}>
-            <sphereGeometry args={[0.5, 32, 32]} />
+            <sphereGeometry args={[0.5, 16, 16]} />
             <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.3} />
           </mesh>
           <mesh position={[0.25, 0.3, 0]} scale={[0.6, 0.6, 0.6]}>
-            <sphereGeometry args={[0.5, 32, 32]} />
+            <sphereGeometry args={[0.5, 16, 16]} />
             <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.3} />
           </mesh>
           <mesh position={[0, -0.2, 0]} rotation={[0, 0, Math.PI]} scale={[0.6, 0.8, 0.6]}>
-            <coneGeometry args={[0.5, 1, 32]} />
+            <coneGeometry args={[0.5, 1, 16]} />
             <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.3} />
           </mesh>
         </mesh>
@@ -56,9 +56,11 @@ function FloatingHearts() {
     );
   };
 
+  const heartCount = isMobile ? 8 : 20;
+
   return (
     <group ref={heartsRef}>
-      {Array.from({ length: 20 }).map((_, i) => (
+      {Array.from({ length: heartCount }).map((_, i) => (
         <HeartShape
           key={i}
           position={[(Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10, (Math.random() - 0.5) * 5 - 5]}
@@ -70,11 +72,11 @@ function FloatingHearts() {
   );
 }
 
-// Particle Field
-function ParticleField() {
+// Particle Field - Reduced count for mobile
+function ParticleField({ isMobile }: { isMobile: boolean }) {
   const points = useRef<THREE.Points>(null);
   
-  const particleCount = 1000;
+  const particleCount = isMobile ? 200 : 1000;
   const positions = new Float32Array(particleCount * 3);
   
   for(let i = 0; i < particleCount * 3; i++) {
@@ -103,48 +105,60 @@ function ParticleField() {
 export default function ValentinePage() {
   const [answered, setAnswered] = useState(false);
   const [showMeme, setShowMeme] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const noButtonRef = useRef<HTMLButtonElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  
+  // Check for mobile on mount
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768 || 'ontouchstart' in window);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
   
   // Smooth spring animation for button movement
   const buttonX = useMotionValue(0);
   const buttonY = useMotionValue(0);
-  const springX = useSpring(buttonX, { stiffness: 300, damping: 20 });
-  const springY = useSpring(buttonY, { stiffness: 300, damping: 20 });
+  const springX = useSpring(buttonX, { stiffness: 500, damping: 30 });
+  const springY = useSpring(buttonY, { stiffness: 500, damping: 30 });
 
-  // Move NO button away from cursor - IMPOSSIBLE TO CLICK!
-  const handleMouseMove = (e: React.MouseEvent) => {
+  // Handle touch/mouse move for the NO button
+  const handleInteraction = (clientX: number, clientY: number) => {
     if (noButtonRef.current && !answered) {
       const rect = noButtonRef.current.getBoundingClientRect();
       const buttonCenterX = rect.left + rect.width / 2;
       const buttonCenterY = rect.top + rect.height / 2;
       
-      const distance = Math.hypot(e.clientX - buttonCenterX, e.clientY - buttonCenterY);
+      const distance = Math.hypot(clientX - buttonCenterX, clientY - buttonCenterY);
+      const detectionRadius = isMobile ? 200 : 300;
       
-      // Aggressive detection radius - runs away from farther distance
-      if (distance < 350) {
-        const angle = Math.atan2(e.clientY - buttonCenterY, e.clientX - buttonCenterX);
-        
-        // Always move at least a minimum distance plus extra based on how close
-        const minEscapeDistance = 150;
-        const panicDistance = Math.max(0, 350 - distance); // More panic when closer
-        const moveDistance = minEscapeDistance + panicDistance * 1.5;
+      if (distance < detectionRadius) {
+        const angle = Math.atan2(clientY - buttonCenterY, clientX - buttonCenterX);
+        const moveDistance = 120 + (detectionRadius - distance) * 0.8;
         
         const newX = Math.cos(angle + Math.PI) * moveDistance;
         const newY = Math.sin(angle + Math.PI) * moveDistance;
         
-        // Keep button within viewport with padding
-        const padding = 80;
+        const padding = isMobile ? 10 : 60;
         const maxX = window.innerWidth - rect.width - padding;
         const maxY = window.innerHeight - rect.height - padding;
         
-        // Add some randomness to make it feel alive
-        const randomX = (Math.random() - 0.5) * 50;
-        const randomY = (Math.random() - 0.5) * 50;
-        
-        buttonX.set(Math.max(padding, Math.min(maxX, buttonX.get() + newX + randomX)));
-        buttonY.set(Math.max(padding, Math.min(maxY, buttonY.get() + newY + randomY)));
+        buttonX.set(Math.max(padding, Math.min(maxX, buttonX.get() + newX)));
+        buttonY.set(Math.max(padding, Math.min(maxY, buttonY.get() + newY)));
       }
     }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    handleInteraction(e.clientX, e.clientY);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    handleInteraction(touch.clientX, touch.clientY);
   };
 
   const handleYesClick = () => {
@@ -154,21 +168,26 @@ export default function ValentinePage() {
 
   return (
     <div 
+      ref={containerRef}
       className="relative min-h-screen bg-gradient-to-br from-pink-900 via-purple-900 to-red-900 overflow-hidden"
       onMouseMove={handleMouseMove}
+      onTouchMove={handleTouchMove}
     >
       {/* Music Player */}
       <MusicPlayer />
 
       {/* 3D Background */}
       <div className="absolute inset-0 z-0">
-        <Canvas>
+        <Canvas
+          dpr={isMobile ? 1 : [1, 2]}
+          performance={{ min: 0.5 }}
+        >
           <PerspectiveCamera makeDefault position={[0, 0, 8]} />
           <ambientLight intensity={0.5} />
           <pointLight position={[10, 10, 10]} intensity={1} color="#ff69b4" />
           <pointLight position={[-10, -10, -10]} intensity={0.5} color="#00ff88" />
-          <ParticleField />
-          <FloatingHearts />
+          <ParticleField isMobile={isMobile} />
+          <FloatingHearts isMobile={isMobile} />
         </Canvas>
       </div>
 
@@ -181,14 +200,13 @@ export default function ValentinePage() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 1.5, filter: "blur(10px)" }}
               transition={{ duration: 0.8, type: "spring", bounce: 0.5 }}
-              className="text-center"
+              className="text-center w-full max-w-4xl"
             >
               {/* Animated Title */}
               <motion.h1 
-                className="text-6xl md:text-8xl font-bold text-white mb-8 drop-shadow-2xl"
+                className="text-4xl sm:text-5xl md:text-6xl lg:text-8xl font-bold text-white mb-6 sm:mb-8 drop-shadow-2xl"
                 animate={{ 
-                  scale: [1, 1.1, 1],
-                  rotate: [0, -2, 2, 0]
+                  scale: [1, 1.05, 1],
                 }}
                 transition={{ 
                   duration: 2, 
@@ -209,33 +227,29 @@ export default function ValentinePage() {
               {/* Floating subtitle */}
               <motion.p
                 initial={{ opacity: 0 }}
-                animate={{ opacity: 1, y: [0, -10, 0] }}
+                animate={{ opacity: 1, y: [0, -5, 0] }}
                 transition={{ delay: 0.5, duration: 2, repeat: Infinity }}
-                className="text-xl text-pink-200 mb-16"
+                className="text-lg sm:text-xl text-pink-200 mb-10 sm:mb-16"
               >
                 (You better say yes... or else 😈)
               </motion.p>
 
-              {/* Buttons Container */}
-              <div className="flex flex-col md:flex-row gap-8 items-center justify-center relative h-40">
-                {/* YES Button - Big and Attractive */}
+              {/* Buttons Container - Vertical on mobile, horizontal on larger screens */}
+              <div className="flex flex-col sm:flex-row gap-6 sm:gap-8 items-center justify-center">
+                {/* YES Button */}
                 <motion.button
                   onClick={handleYesClick}
-                  whileHover={{ 
-                    scale: 1.2, 
-                    rotate: [0, -5, 5, 0],
-                    boxShadow: "0 0 50px rgba(255,20,147,0.8)"
-                  }}
-                  whileTap={{ scale: 0.9 }}
+                  whileTap={{ scale: 0.95 }}
                   animate={{
                     scale: [1, 1.05, 1],
                   }}
                   transition={{
                     scale: { duration: 1.5, repeat: Infinity },
                   }}
-                  className="bg-gradient-to-r from-pink-500 to-red-500 text-white text-3xl md:text-5xl font-bold py-6 px-16 rounded-full shadow-2xl border-4 border-white/30 cursor-pointer relative overflow-hidden group"
+                  className="bg-gradient-to-r from-pink-500 to-red-500 text-white text-2xl sm:text-3xl md:text-5xl font-bold py-5 px-12 sm:py-6 sm:px-16 rounded-full shadow-2xl border-4 border-white/30 active:scale-95 touch-manipulation"
+                  style={{ WebkitTapHighlightColor: 'transparent' }}
                 >
-                  <span className="relative z-10 flex items-center gap-3">
+                  <span className="flex items-center gap-2">
                     YES! 💖
                     <motion.span
                       animate={{ rotate: [0, 20, -20, 0] }}
@@ -244,29 +258,25 @@ export default function ValentinePage() {
                       🌹
                     </motion.span>
                   </span>
-                  <motion.div
-                    className="absolute inset-0 bg-gradient-to-r from-red-400 to-pink-600"
-                    initial={{ x: "100%" }}
-                    whileHover={{ x: 0 }}
-                    transition={{ type: "spring", stiffness: 300 }}
-                  />
                 </motion.button>
 
-                {/* NO Button - IMPOSSIBLE TO CLICK! */}
-                <motion.button
-                  ref={noButtonRef}
-                  style={{ x: springX, y: springY }}
-                  className="bg-gray-700 text-gray-500 text-xl font-bold py-4 px-8 rounded-full border-2 border-gray-500 select-none pointer-events-none absolute md:static"
-                  tabIndex={-1}
-                  aria-disabled="true"
-                >
-                  no... ❌
-                </motion.button>
+                {/* NO Button - In a wrapper that allows positioning */}
+                <div className="relative sm:static">
+                  <motion.button
+                    ref={noButtonRef}
+                    style={{ x: springX, y: springY }}
+                    className="bg-gray-700 text-gray-500 text-xl sm:text-2xl font-bold py-4 px-8 rounded-full border-2 border-gray-500 select-none touch-manipulation"
+                    tabIndex={-1}
+                    aria-disabled="true"
+                  >
+                    no... ❌
+                  </motion.button>
+                </div>
               </div>
 
               {/* Taunting messages */}
               <motion.div
-                className="mt-12 text-pink-300 text-lg italic h-8"
+                className="mt-10 sm:mt-12 text-pink-300 text-base sm:text-lg italic"
                 animate={{ opacity: [0.5, 1, 0.5] }}
                 transition={{ duration: 2, repeat: Infinity }}
               >
@@ -277,11 +287,11 @@ export default function ValentinePage() {
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="text-center"
+              className="text-center px-4"
             >
               {!showMeme ? (
                 <motion.h2 
-                  className="text-6xl font-bold text-white"
+                  className="text-5xl sm:text-6xl font-bold text-white"
                   animate={{ scale: [1, 1.2, 1] }}
                   transition={{ duration: 0.5, repeat: 3 }}
                 >
